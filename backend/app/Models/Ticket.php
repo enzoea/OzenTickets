@@ -14,6 +14,7 @@ class Ticket extends Model
 
     protected $fillable = [
         'codigo',
+        'project_id',
         'titulo',
         'subtitulo',
         'descricao',
@@ -41,6 +42,16 @@ class Ticket extends Model
     public function solicitante()
     {
         return $this->belongsTo(User::class, 'solicitante_id');
+    }
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function updates()
+    {
+        return $this->hasMany(TicketUpdate::class);
     }
 
     public function scopeByStatus(Builder $query, TicketStatus|string|null $status): Builder
@@ -72,6 +83,12 @@ class Ticket extends Model
         if ($from) $query->whereDate('data_prevista', '>=', $from);
         if ($to) $query->whereDate('data_prevista', '<=', $to);
         return $query;
+    }
+
+    public function scopeOfProject(Builder $query, $projectId): Builder
+    {
+        if (!$projectId) return $query;
+        return $query->where('project_id', (int) $projectId);
     }
 
     public function scopeMatchesQuery(Builder $query, ?string $q): Builder

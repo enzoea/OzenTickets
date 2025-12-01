@@ -25,6 +25,7 @@ class StoreTicketRequest extends FormRequest
             'responsavel_id' => ['nullable','exists:users,id'],
             'solicitante_id' => ['nullable','exists:users,id'],
             'data_prevista' => ['nullable','date'],
+            'project_id' => ['required','exists:projects,id'],
         ];
     }
 }

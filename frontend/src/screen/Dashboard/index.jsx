@@ -28,7 +28,7 @@ Chart.register(
   LinearScale
 );
 
-export default function Dashboard() {
+export default function Dashboard({ projectId }) {
   const [tickets, setTickets] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,10 +60,11 @@ export default function Dashboard() {
     try {
       const params = {};
       if (searchQuery && searchQuery.trim() !== "") params.q = searchQuery.trim();
+      if (projectId) params.project_id = projectId;
       const res = await api.get("/tickets", { params });
       setTickets(res.data);
     } catch (e) { console.error(e); }
-  }, [searchQuery]);
+  }, [searchQuery, projectId]);
 
   useEffect(() => {
     const load = async () => {

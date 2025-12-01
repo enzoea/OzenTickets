@@ -25,6 +25,7 @@ class UpdateTicketRequest extends FormRequest
             'responsavel_id' => ['sometimes','nullable','exists:users,id'],
             'solicitante_id' => ['sometimes','nullable','exists:users,id'],
             'data_prevista' => ['sometimes','nullable','date'],
+            'project_id' => ['sometimes','exists:projects,id'],
         ];
     }
 }

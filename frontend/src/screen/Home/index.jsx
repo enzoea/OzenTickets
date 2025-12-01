@@ -41,7 +41,7 @@ const priorityColor = (p) => {
   }
 };
 
-function App() {
+function App({ projectId }) {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -85,14 +85,16 @@ function App() {
   const loadTickets = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get("/tickets");
+      const params = {};
+      if (projectId) params.project_id = projectId;
+      const response = await api.get("/tickets", { params });
       setTickets(response.data);
     } catch (error) {
       console.error("Erro ao buscar tickets:", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     loadTickets();
@@ -176,6 +178,7 @@ function App() {
         solicitante_id: solicitanteId || null,
         data_prevista: dataPrevista || null,
         prioridade: prioridade || "padrao",
+        project_id: projectId,
       });
 
       // limpa o formulário

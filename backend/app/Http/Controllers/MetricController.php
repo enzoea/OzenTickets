@@ -14,11 +14,28 @@ class MetricController extends Controller
         $from = $request->query('from');
         $to = $request->query('to');
         $status = $request->query('status');
+        $projectId = $request->query('project_id');
+        $user = $request->user();
+        $userProjectIds = $user ? $user->projects()->pluck('projects.id')->all() : [];
 
-        return Ticket::query()
+        $query = Ticket::query()
             ->ofUsers($ids)
             ->inDateRange($from, $to)
-            ->byStatus($status);
+            ->byStatus($status)
+            ->when(!$projectId, function ($q2) use ($userProjectIds) {
+                if (count($userProjectIds) > 0) {
+                    $q2->whereIn('project_id', $userProjectIds);
+                } else {
+                    $q2->whereRaw('1=0');
+                }
+            })
+            ->ofProject($projectId);
+
+        if ($projectId && !in_array((int) $projectId, $userProjectIds, true)) {
+            return Ticket::query()->whereRaw('1=0');
+        }
+
+        return $query;
     }
 
     public function byStatus(Request $request)
