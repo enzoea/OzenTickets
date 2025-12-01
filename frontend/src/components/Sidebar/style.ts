@@ -17,6 +17,7 @@ export const asideStyle: React.CSSProperties = {
 };
 
 export const navButtonStyle = (active: boolean): React.CSSProperties => ({
+  width: "100%",
   background: "transparent",
   color: theme.colors.text,
   border: `1px solid ${active ? theme.colors.blueOutline : theme.palettes.blue[5]}`,

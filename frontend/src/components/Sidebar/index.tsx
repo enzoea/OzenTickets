@@ -68,12 +68,15 @@ export default function Sidebar({ items, activeKey, onSelect, user, onLogout, on
       </button>
     );
   };
+  const mainItems = items.filter((it) => it.key !== 'users');
+  const usersItem = items.find((it) => it.key === 'users') || null;
+
   return (
     <aside ref={asideRef} style={asideStyle}>
       <div>
         <div style={{ padding: 16, fontWeight: 700 }}>Painel de Demandas</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 8 }}>
-          {items.map(renderItem)}
+          {mainItems.map(renderItem)}
           {onCreateProject ? (
             <button
               onClick={onCreateProject}
@@ -89,6 +92,16 @@ export default function Sidebar({ items, activeKey, onSelect, user, onLogout, on
       <div style={{ padding: 16, borderTop: `1px solid #e5e7eb` }}>
         <div style={{ fontSize: 14, opacity: 0.9 }}>{user?.name}</div>
         <div style={{ fontSize: 12, opacity: 0.8 }}>{user?.email}</div>
+        {usersItem ? (
+          <div style={{ marginTop: 8 }}>
+            <button
+              style={navButtonStyle(activeKey === usersItem.key)}
+              onClick={() => onSelect(usersItem.key)}
+            >
+              {usersItem.label}
+            </button>
+          </div>
+        ) : null}
         <button onClick={onLogout} style={logoutButtonStyle}>Sair</button>
       </div>
     </aside>
