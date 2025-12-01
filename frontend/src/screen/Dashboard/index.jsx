@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "../../api";
 import { Pie, Bar } from "react-chartjs-2";
 import { theme } from "../../theme";
@@ -50,24 +50,49 @@ export default function Dashboard() {
   const [dateTo, setDateTo] = useState("");
   const [dateCreatedFrom, setDateCreatedFrom] = useState("");
   const [dateCreatedTo, setDateCreatedTo] = useState("");
+  const [createdOrder, setCreatedOrder] = useState("none");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchContainerRef = useRef(null);
   
+
+  const loadTickets = useCallback(async () => {
+    try {
+      const params = {};
+      if (searchQuery && searchQuery.trim() !== "") params.q = searchQuery.trim();
+      const res = await api.get("/tickets", { params });
+      setTickets(res.data);
+    } catch (e) { console.error(e); }
+  }, [searchQuery]);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [tRes, uRes] = await Promise.allSettled([
-          api.get("/tickets"),
-          api.get("/user-list"),
-        ]);
-        if (tRes.status === "fulfilled") setTickets(tRes.value.data);
-        if (uRes.status === "fulfilled") setUsers(uRes.value.data);
+        await loadTickets();
+        const uRes = await api.get("/user-list");
+        setUsers(uRes.data);
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [loadTickets]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      loadTickets();
+    }, 300);
+    return () => clearTimeout(t);
+  }, [loadTickets]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const el = searchContainerRef.current;
+    if (!el) return;
+    const input = el.querySelector('input');
+    if (input) input.focus();
+  }, [searchOpen]);
 
   useEffect(() => {
     try {
@@ -467,7 +492,7 @@ export default function Dashboard() {
       <div style={{ marginTop: theme.spacing.lg }}>
         <div style={{ paddingTop: 50,display: "flex", alignItems: "center", justifyContent: "space-between", gap: theme.spacing.sm }}>
           <h3>Todos os tickets</h3>
-          <div style={{ minWidth: 220, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 20 }}>
             <p>Ordenação</p>
             <Select
               value={ticketOrder}
@@ -476,7 +501,71 @@ export default function Dashboard() {
                 { value: "newest", label: "Data fim: mais recente" },
                 { value: "oldest", label: "Data fim: mais antiga" },
               ]}
+              style={{ width: "auto", minWidth: 200, flexShrink: 0 }}
             />
+            <p>Abertura</p>
+            <Select
+              value={createdOrder}
+              onChange={setCreatedOrder}
+              options={[
+                { value: "created_newest", label: "Mais recente" },
+                { value: "created_oldest", label: "Mais antiga" },
+                { value: "none", label: "Padrão" },
+              ]}
+              style={{ width: "auto", minWidth: 180, flexShrink: 0 }}
+            />
+            <div ref={searchContainerRef} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {!searchOpen ? (
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="fade-in"
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: theme.radius.sm,
+                    border: `1px solid ${theme.colors.border}`,
+                    background: theme.colors.white,
+                    color: theme.colors.text,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>🔍</span>
+                </button>
+              ) : (
+                <>
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Pesquisar por código, título, descrição ou comentário"
+                    style={{
+                      width: 360,
+                      padding: 8,
+                      borderRadius: theme.radius.sm,
+                      border: `1px solid ${theme.colors.border}`,
+                      background: theme.colors.white,
+                      color: theme.colors.text,
+                    }}
+                  />
+                  <button
+                    onClick={loadTickets}
+                    className="fade-in"
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: theme.radius.sm,
+                      border: "none",
+                      background: theme.colors.primary,
+                      color: theme.colors.white,
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Buscar
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
         {(() => {
@@ -488,7 +577,21 @@ export default function Dashboard() {
             const t = d.getTime();
             return Number.isNaN(t) ? null : t;
           };
+          const parseCreated = (s) => {
+            if (!s) return null;
+            const d = new Date(s);
+            const t = d.getTime();
+            return Number.isNaN(t) ? null : t;
+          };
           list.sort((a, b) => {
+            if (createdOrder === "created_newest" || createdOrder === "created_oldest") {
+              const atc = parseCreated(a?.created_at);
+              const btc = parseCreated(b?.created_at);
+              if (atc == null && btc == null) return 0;
+              if (atc == null) return 1;
+              if (btc == null) return -1;
+              return createdOrder === "created_newest" ? btc - atc : atc - btc;
+            }
             const at = parseDue(a?.data_prevista);
             const bt = parseDue(b?.data_prevista);
             if (at == null && bt == null) return 0;

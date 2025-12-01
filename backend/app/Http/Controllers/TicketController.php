@@ -16,14 +16,16 @@ class TicketController extends Controller
         $from = $request->query('from');
         $to = $request->query('to');
         $status = $request->query('status');
+        $q = $request->query('q');
 
         $query = Ticket::query()
             ->ofUsers($ids)
             ->inDateRange($from, $to)
             ->byStatus($status)
+            ->matchesQuery($q)
             ->with(['responsavel','solicitante']);
 
-        return TicketResource::collection($query->get());
+        return TicketResource::collection($query->orderBy('created_at', 'desc')->get());
     }
 
     public function store(StoreTicketRequest $request, TicketService $service)

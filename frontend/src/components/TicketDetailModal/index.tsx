@@ -314,6 +314,10 @@ export default function TicketDetailModal({ open, ticket, users, currentUserId =
         <div style={{ gridColumn: "2 / 3", gridRow: "5" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.sm }}>
             <div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Código</div>
+              <div className="field-box" style={{ fontSize: 14 }}>#{ticket.codigo ?? ticket.id}</div>
+            </div>
+            <div>
               <div style={{ fontSize: 12, opacity: 0.7 }}>Criado em</div>
               <div className="field-box" style={{ fontSize: 14 }}>
                 {ticket.created_at

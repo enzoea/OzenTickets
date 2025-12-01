@@ -13,6 +13,7 @@ class Ticket extends Model
     use HasFactory;
 
     protected $fillable = [
+        'codigo',
         'titulo',
         'subtitulo',
         'descricao',
@@ -24,6 +25,7 @@ class Ticket extends Model
     ];
 
     protected $casts = [
+        'codigo' => 'integer',
         'status' => TicketStatus::class,
         'prioridade' => TicketPriority::class,
         'data_prevista' => 'date',
@@ -69,6 +71,35 @@ class Ticket extends Model
         if (!$from && !$to) return $query;
         if ($from) $query->whereDate('data_prevista', '>=', $from);
         if ($to) $query->whereDate('data_prevista', '<=', $to);
+        return $query;
+    }
+
+    public function scopeMatchesQuery(Builder $query, ?string $q): Builder
+    {
+        $q = is_string($q) ? trim($q) : '';
+        if (str_starts_with($q, '#')) {
+            $q = ltrim($q, '#');
+        }
+        if ($q === '') return $query;
+
+        $isNumeric = ctype_digit($q);
+        $query->where(function ($sub) use ($q, $isNumeric) {
+            if ($isNumeric) {
+                $sub->orWhere('codigo', (int) $q)
+                    ->orWhere('id', (int) $q);
+            }
+            $like = '%' . str_replace(['%','_'], ['\%','\_'], $q) . '%';
+            $sub->orWhere('titulo', 'like', $like)
+                ->orWhere('subtitulo', 'like', $like)
+                ->orWhere('descricao', 'like', $like)
+                ->orWhereExists(function ($exists) use ($like) {
+                    $exists->selectRaw(1)
+                        ->from('ticket_updates')
+                        ->whereColumn('ticket_updates.ticket_id', 'tickets.id')
+                        ->where('ticket_updates.conteudo', 'like', $like);
+                });
+        });
+
         return $query;
     }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "../../api";
 import Input from "../../components/Input";
 import PrimaryButton from "../../components/PrimaryButton";
@@ -78,10 +78,11 @@ function App() {
   const [dateTo, setDateTo] = useState("");
   const [dateCreatedFrom, setDateCreatedFrom] = useState("");
   const [dateCreatedTo, setDateCreatedTo] = useState("");
+  
 
   const isReadOnly = String(currentUserTipo) === "cliente";
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get("/tickets");
@@ -91,7 +92,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadTickets();
@@ -113,7 +114,7 @@ function App() {
         setCurrentUserTipo(u?.tipo || null);
       }
     }
-  }, []);
+  }, [loadTickets]);
 
   useEffect(() => {
     const fetchUpdates = async () => {
@@ -149,6 +150,10 @@ function App() {
   useEffect(() => {
     if (filterOpen) setDraftSelectedUserIds(selectedUserIds);
   }, [filterOpen, selectedUserIds]);
+
+  
+
+  
 
   
 
@@ -385,6 +390,7 @@ function App() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: theme.spacing.sm }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Filtros</div>
+            
           <div style={{ display: "flex", alignItems: "center", gap: theme.spacing.sm }}>
             <div style={{ position: "relative" }}>
               <button
@@ -582,7 +588,10 @@ function App() {
                   }}
                 >
                   <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700 }}>{ticket.titulo}</div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>{ticket.titulo}</div>
+                      <div style={{ fontSize: 12, color: "#666" }}>#{ticket.codigo ?? ticket.id}</div>
+                    </div>
                     <div style={{ fontSize: 14, color: "#555", marginTop: 4, whiteSpace: "pre-wrap" }}>
                       {ticket.descricao ? ticket.descricao : ""}
                     </div>
@@ -957,16 +966,20 @@ function App() {
                 />
               </div>
             </div>
-            <div style={{ gridColumn: "2 / 3", gridRow: "5" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.sm }}>
-                <div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>Criado em</div>
-                  <div className="field-box" style={{ fontSize: 14 }}>
-                    {detailTicket?.created_at
-                      ? (() => { const d = new Date(detailTicket.created_at); return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` })()
-                      : "-"}
-                  </div>
-                </div>
+        <div style={{ gridColumn: "2 / 3", gridRow: "5" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.sm }}>
+            <div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Código</div>
+              <div className="field-box" style={{ fontSize: 14 }}>#{detailTicket?.codigo ?? detailTicket?.id ?? "-"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Criado em</div>
+              <div className="field-box" style={{ fontSize: 14 }}>
+                {detailTicket?.created_at
+                  ? (() => { const d = new Date(detailTicket.created_at); return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` })()
+                  : "-"}
+              </div>
+            </div>
                 <div>
                   <div style={{ fontSize: 12, opacity: 0.7 }}>Solicitante</div>
                   <Select
