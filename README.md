@@ -21,6 +21,10 @@ Sistema simples para gestão de tickets com Kanban, filtros por data e pessoas, 
   - `can:manage-users` definido para administradores (is_admin) em `backend/app/Providers/AppServiceProvider.php`.
   - Usuários `cliente` não podem criar/editar tickets ou comentários.
 
+- Base de conhecimento: categorias e artigos com busca e filtros no topo e resultados listados verticalmente; possibilidade de vincular artigos a tickets.
+- Projetos e tags: organização e classificação de tickets, com endpoints para CRUD e associação.
+- Anexos de tickets: upload, listagem e remoção de arquivos vinculados aos tickets.
+
 ## Requisitos
 
 - PHP 8.2+
@@ -28,6 +32,13 @@ Sistema simples para gestão de tickets com Kanban, filtros por data e pessoas, 
 - Node.js 20.19+ (ou 22.12+)
 - NPM 10+
 - SQLite (padrão) ou outro banco suportado pelo Laravel (configurável).
+
+## Tecnologias Utilizadas
+
+- Frontend: React 19, Vite 7, Axios, Chart.js + react-chartjs-2, ESLint 9.
+- Backend: Laravel 12, Sanctum, Vite (laravel-vite-plugin), Tailwind CSS 4, PHPUnit.
+- Banco: SQLite por padrão (MySQL/MariaDB/PostgreSQL suportados via `.env`).
+- Orquestração: `concurrently` via script Composer para desenvolvimento integrado no backend.
 
 ## Backend (Laravel)
 
@@ -79,6 +90,8 @@ npm run dev
 # Aplicação: http://localhost:5173/
 ```
 
+- O frontend usa `baseURL` em `frontend/src/api.js` apontando para `http://127.0.0.1:8000/api`.
+
 3) Lint e build
 
 ```powershell
@@ -113,6 +126,17 @@ npm run preview
 - Usuários (admin)
   - `GET /users`, `POST /users`, `PUT /users/{id}`, `DELETE /users/{id}` — requer `can:manage-users` (is_admin).
   - `GET /user-list` — lista básica para seleção em tickets.
+
+- Base de conhecimento
+  - Categorias: `GET /kb/categories`, `POST /kb/categories` (admin), `PUT /kb/categories/{id}` (admin), `DELETE /kb/categories/{id}` (admin).
+  - Artigos: `GET /kb/articles`, `GET /kb/articles/{id}`, `POST /kb/articles` (admin), `PUT /kb/articles/{id}` (admin), `DELETE /kb/articles/{id}` (admin).
+  - Vínculo artigo-ticket: `POST /kb/articles/{article}/tickets/{ticket}`, `DELETE /kb/articles/{article}/tickets/{ticket}` (admin).
+
+- Tags
+  - `GET /tags`, `POST /tags`, `PUT /tags/{id}` (admin), `DELETE /tags/{id}` (admin).
+
+- Anexos de tickets
+  - `GET /tickets/{id}/attachments`, `POST /tickets/{id}/attachments`, `DELETE /tickets/{id}/attachments/{attachment}`.
 
 ## Execução Rápida (Windows)
 
