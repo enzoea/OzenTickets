@@ -2,16 +2,11 @@ import { asideStyle, navButtonStyle, logoutButtonStyle } from "./style";
 import type { SidebarProps, SidebarItem } from "./interface";
 import { useEffect, useRef, useState } from "react";
 
-export default function Sidebar({ items, activeKey, onSelect, user, onLogout, onCreateProject, canCreateProject = true, onRenameProject, onDeleteProject, userList = [], onLinkMember }: SidebarProps) {
+export default function Sidebar({ items, activeKey, onSelect, user, onLogout, onCreateProject, canCreateProject = true, onRenameProject, onDeleteProject }: SidebarProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const toggle = (key: string) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   const [ctxKey, setCtxKey] = useState<string | null>(null);
   const asideRef = useRef<HTMLElement | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const matches = searchTerm.trim() === "" ? [] : userList.filter((u) => {
-    const q = searchTerm.trim().toLowerCase();
-    return u.name.toLowerCase().includes(q) || String(u.email || "").toLowerCase().includes(q);
-  }).slice(0, 5);
 
   useEffect(() => {
     if (!ctxKey) return;
@@ -53,38 +48,6 @@ export default function Sidebar({ items, activeKey, onSelect, user, onLogout, on
                   Excluir projeto
                 </button>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Vincular colaborador por nome ou e-mail"
-                  style={{ width: 240, padding: 6, borderRadius: 6, border: '1px solid #e5e7eb', background: '#fff', color: '#111' }}
-                />
-                <button
-                  style={navButtonStyle(false)}
-                  onClick={() => {
-                    if (!searchTerm.trim()) return;
-                    onLinkMember && onLinkMember(it.key, { email: searchTerm.trim() });
-                    setSearchTerm("");
-                  }}
-                  disabled={!canCreateProject}
-                >
-                  Vincular por e-mail
-                </button>
-              </div>
-              {matches.length > 0 ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 0, border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff' }}>
-                  {matches.map((u) => (
-                    <div
-                      key={u.id}
-                      onClick={() => { onLinkMember && onLinkMember(it.key, { id: u.id }); setSearchTerm(""); }}
-                      style={{ padding: 6, fontSize: 12, cursor: canCreateProject ? 'pointer' : 'default' }}
-                    >
-                      {u.name} <span style={{ opacity: 0.7 }}>({u.email})</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
             </div>
           ) : null}
           {isOpen ? (

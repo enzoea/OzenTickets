@@ -67,6 +67,12 @@ function App({ projectId }) {
   const [editingDescription, setEditingDescription] = useState(false);
   const [detailSaving, setDetailSaving] = useState(false);
   const [prioridade, setPrioridade] = useState("padrao");
+  const [slaHours, setSlaHours] = useState("");
+  const [dueAt, setDueAt] = useState("");
+  const [tags, setTags] = useState([]);
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
+  const [creatingTagInline, setCreatingTagInline] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const filterContainerRef = useRef(null);
@@ -79,6 +85,18 @@ function App({ projectId }) {
   const [dateCreatedFrom, setDateCreatedFrom] = useState("");
   const [dateCreatedTo, setDateCreatedTo] = useState("");
   
+
+  const [kbTerm, setKbTerm] = useState("");
+  const [kbResults, setKbResults] = useState([]);
+  const [kbLinked, setKbLinked] = useState([]);
+  const [kbBusy, setKbBusy] = useState(false);
+  const [kbCategories, setKbCategories] = useState([]);
+  const [kbCategoriesLoading, setKbCategoriesLoading] = useState(false);
+  const [kbCreating, setKbCreating] = useState(false);
+  const [kbCreateTitle, setKbCreateTitle] = useState("");
+  const [kbCreateContent, setKbCreateContent] = useState("");
+  const [kbCreateCategoryId, setKbCreateCategoryId] = useState("");
+  const [kbCreateVisibility, setKbCreateVisibility] = useState("interno");
 
   const isReadOnly = String(currentUserTipo) === "cliente";
 
@@ -99,6 +117,7 @@ function App({ projectId }) {
   useEffect(() => {
     loadTickets();
     api.get("/user-list").then((res) => setUsers(res.data));
+    api.get("/tags").then((res) => setTags(res.data || []));
     const userStr = localStorage.getItem("user");
     if (userStr) {
       let u = null;
@@ -125,10 +144,10 @@ function App({ projectId }) {
         const res = await api.get(`/tickets/${detailTicket.id}/updates`);
         setDetailUpdates(Array.isArray(res.data)
           ? res.data.slice().sort((a, b) => {
-              const at = a?.created_at ? new Date(a.created_at).getTime() : 0;
-              const bt = b?.created_at ? new Date(b.created_at).getTime() : 0;
-              return at - bt;
-            })
+            const at = a?.created_at ? new Date(a.created_at).getTime() : 0;
+            const bt = b?.created_at ? new Date(b.created_at).getTime() : 0;
+            return at - bt;
+          })
           : res.data);
       } catch (e) {
         console.error(e);
@@ -136,6 +155,150 @@ function App({ projectId }) {
     };
     fetchUpdates();
   }, [detailTicket]);
+
+  const loadKbLinked = useCallback(async () => {
+    if (!detailTicket?.id) return;
+    try {
+      const res = await api.get('/kb/articles', { params: { ticket_id: detailTicket.id } });
+      const data = res.data?.data ?? res.data ?? [];
+      setKbLinked(Array.isArray(data) ? data : data.data ?? []);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [detailTicket]);
+
+  useEffect(() => {
+    if (!detailTicket?.id) return;
+    setKbCategoriesLoading(true);
+    api.get('/kb/categories')
+      .then((res) => setKbCategories(res.data?.data ?? res.data ?? []))
+      .finally(() => setKbCategoriesLoading(false));
+    loadKbLinked();
+  }, [detailTicket, loadKbLinked]);
+
+  useEffect(() => {
+    if (!kbCreating) return;
+    if (!kbCreateCategoryId) {
+      const first = kbCategories && kbCategories.length > 0 ? kbCategories[0] : null;
+      if (first) setKbCreateCategoryId(String(first.id));
+    }
+  }, [kbCreating, kbCategories, kbCreateCategoryId]);
+
+  const searchKb = async () => {
+    setKbBusy(true);
+    try {
+      const params = {};
+      if (kbTerm) params.q = kbTerm;
+      const res = await api.get('/kb/articles', { params });
+      const data = res.data?.data ?? res.data ?? [];
+      setKbResults(Array.isArray(data) ? data : data.data ?? []);
+    } finally {
+      setKbBusy(false);
+    }
+  };
+
+  const attachKb = async (articleId) => {
+    if (!detailTicket?.id) return;
+    setKbBusy(true);
+    try {
+      await api.post(`/kb/articles/${articleId}/tickets/${detailTicket.id}`);
+      await loadKbLinked();
+    } finally {
+      setKbBusy(false);
+    }
+  };
+
+  const detachKb = async (articleId) => {
+    if (!detailTicket?.id) return;
+    setKbBusy(true);
+    try {
+      await api.delete(`/kb/articles/${articleId}/tickets/${detailTicket.id}`);
+      await loadKbLinked();
+    } finally {
+      setKbBusy(false);
+    }
+  };
+
+  const openKbCreate = async () => {
+    setKbCreating(true);
+    setKbCreateTitle(detailTicket?.titulo || "");
+    setKbCreateVisibility("publico");
+    if (!kbCreateCategoryId) {
+      if (!kbCategories || kbCategories.length === 0) {
+        setKbCategoriesLoading(true);
+        try {
+          const res = await api.get('/kb/categories');
+          const list = res.data?.data ?? res.data ?? [];
+          setKbCategories(list);
+          const first = list && list.length > 0 ? list[0] : null;
+          setKbCreateCategoryId(first ? String(first.id) : "");
+        } finally {
+          setKbCategoriesLoading(false);
+        }
+      } else {
+        const first = kbCategories[0] || null;
+        setKbCreateCategoryId(first ? String(first.id) : "");
+      }
+    }
+    let html = "";
+    if (detailTicket?.descricao) {
+      html += `<h4>Descrição</h4><div>${detailTicket.descricao}</div>`;
+    }
+    const ordered = detailUpdates.slice().sort((a, b) => {
+      const at = a?.created_at ? new Date(a.created_at).getTime() : 0;
+      const bt = b?.created_at ? new Date(b.created_at).getTime() : 0;
+      return at - bt;
+    });
+    if (ordered.length > 0) {
+      html += "<h4>Atualizações</h4>";
+      for (const u of ordered) {
+        const author = u?.user?.name || "";
+        const when = u?.created_at ? new Date(u.created_at).toLocaleString("pt-BR") : "";
+        html += `<div><b>${author}</b> ${when}</div><div>${u?.conteudo || ""}</div>`;
+      }
+    }
+    setKbCreateContent(html && html.trim() ? html : `<p>Sem conteúdo</p>`);
+  };
+
+  const createKb = async () => {
+    setKbBusy(true);
+    try {
+      const titulo = (kbCreateTitle && kbCreateTitle.trim())
+        ? kbCreateTitle.trim()
+        : ((detailTicket?.titulo && String(detailTicket.titulo).trim()) ? String(detailTicket.titulo).trim() : "Sem título");
+      const conteudoBase = kbCreateContent || (detailTicket?.descricao || "");
+      const conteudo = (conteudoBase && String(conteudoBase).trim()) ? String(conteudoBase).trim() : `<p>Sem conteúdo</p>`;
+      const payload = {
+        titulo,
+        conteudo,
+        kb_category_id: Number(kbCreateCategoryId),
+        status: "publicado",
+        visibilidade: kbCreateVisibility || "publico",
+      };
+      const res = await api.post('/kb/articles', payload);
+      const art = res.data;
+      await attachKb(art.id);
+      setKbCreating(false);
+      setKbCreateTitle(art.titulo || "");
+    } catch (err) {
+      const msg = (() => {
+        try {
+          const data = err?.response?.data;
+          if (typeof data === 'string') return data;
+          if (data?.message) return data.message;
+          const errs = data?.errors;
+          if (errs && typeof errs === 'object') {
+            const first = Object.values(errs)[0];
+            if (Array.isArray(first) && first.length > 0) return String(first[0]);
+          }
+        } catch { void 0; }
+        return 'Não foi possível salvar o artigo.';
+      })();
+      alert(msg);
+    } finally {
+      setKbBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -175,11 +338,43 @@ function App({ projectId }) {
         descricao,
         status,
         responsavel_id: responsavelId || null,
+        assigned_to_user_id: responsavelId || null,
         solicitante_id: solicitanteId || null,
         data_prevista: dataPrevista || null,
+        sla_hours: slaHours ? Number(slaHours) : null,
+        due_at: dueAt || null,
+        tag_ids: selectedTagIds.map((id) => Number(id)),
         prioridade: prioridade || "padrao",
         project_id: projectId,
+      }).then(async (res) => {
+        const created = res?.data || null;
+        const createdId = created?.id;
+        if (createdId && newTagName.trim()) {
+          const existing = tags.find((t) => String(t.name).toLowerCase() === newTagName.trim().toLowerCase());
+          let tagId = existing?.id || null;
+          if (!tagId) {
+            try {
+              const tRes = await api.post('/tags', { name: newTagName.trim() });
+              const newTag = tRes?.data;
+              if (newTag?.id) {
+                setTags((prev) => [...prev, newTag]);
+                tagId = newTag.id;
+              }
+            } catch {
+              // se já existir, tenta localizar e usar
+              const fallback = tags.find((t) => String(t.name).toLowerCase() === newTagName.trim().toLowerCase());
+              tagId = fallback?.id || null;
+            }
+          }
+          if (tagId) {
+            const nextTagIds = Array.from(new Set([...selectedTagIds.map((id) => Number(id)), Number(tagId)]));
+            try { await api.put(`/tickets/${createdId}`, { tag_ids: nextTagIds }); } catch { void 0; }
+          }
+        }
       });
+
+      // fecha o modal imediatamente após criar com sucesso
+      setCreateModalOpen(false);
 
       // limpa o formulário
       setTitulo("");
@@ -187,8 +382,13 @@ function App({ projectId }) {
       setDescricao("");
       setStatus("backlog");
       setResponsavelId("");
+      setSlaHours("");
+      setDueAt("");
+      setSelectedTagIds([]);
       setDataPrevista("");
       setPrioridade("padrao");
+      setCreatingTagInline(false);
+      setNewTagName("");
 
       // recarrega a lista
       await loadTickets();
@@ -202,13 +402,13 @@ function App({ projectId }) {
 
   const handleChangeStatus = async (id, newStatus) => {
     try {
-      await api.put(`/tickets/${id}`, { status: newStatus });
-      // atualiza só em memória pra não precisar refazer GET se não quiser
-      setTickets((prev) =>
-        prev.map((ticket) =>
-          ticket.id === id ? { ...ticket, status: newStatus } : ticket
-        )
-      );
+      const res = await api.put(`/tickets/${id}`, { status: newStatus });
+      const updated = res?.data || { id, status: newStatus };
+      setTickets((prev) => prev.map((ticket) => (
+        ticket.id === id
+          ? { ...ticket, status: updated.status ?? newStatus, resolved_at: updated.resolved_at ?? ticket.resolved_at }
+          : ticket
+      )));
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
       alert("Não foi possível atualizar o status desse ticket.");
@@ -658,7 +858,7 @@ function App({ projectId }) {
           </div>
         }
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.sm }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.sm }}>
           <div>
             <div style={{ fontSize: theme.typography.baseSize, marginBottom: theme.spacing.xs }}>Título</div>
             <Input value={titulo} onChange={setTitulo} placeholder="Ex: Implementar tela de login" />
@@ -689,22 +889,95 @@ function App({ projectId }) {
               options={users.map((u) => ({ value: String(u.id), label: `${u.name} (${u.email})` }))}
             />
           </div>
-          <div>
-            <div style={{ fontSize: theme.typography.baseSize, marginBottom: theme.spacing.xs }}>Data prevista (opcional)</div>
-            <DatePicker value={dataPrevista} onChange={setDataPrevista} />
-          </div>
-          <div>
-            <div style={{ fontSize: theme.typography.baseSize, marginBottom: theme.spacing.xs }}>Prioridade</div>
-            <Select
-              value={prioridade}
-              onChange={setPrioridade}
-              options={PRIORITY_OPTIONS}
-              placeholder="Padrão"
-              style={{ width: 200 }}
-            />
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Status: {createForStatus}</div>
+        <div>
+          <div style={{ fontSize: theme.typography.baseSize, marginBottom: theme.spacing.xs }}>Data prevista (opcional)</div>
+          <DatePicker value={dataPrevista} onChange={setDataPrevista} />
         </div>
+        <div>
+          <div style={{ fontSize: theme.typography.baseSize, marginBottom: theme.spacing.xs }}>Prazo (due_at)</div>
+          <DatePicker value={dueAt} onChange={setDueAt} />
+        </div>
+        <div>
+          <div style={{ fontSize: theme.typography.baseSize, marginBottom: theme.spacing.xs }}>SLA (horas)</div>
+          <Input type="number" value={slaHours} onChange={setSlaHours} placeholder="Ex: 24" />
+        </div>
+        <div>
+          <div style={{ fontSize: theme.typography.baseSize, marginBottom: theme.spacing.xs }}>Prioridade</div>
+          <Select
+            value={prioridade}
+            onChange={setPrioridade}
+            options={PRIORITY_OPTIONS}
+            placeholder="Padrão"
+            style={{ width: 200 }}
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: theme.typography.baseSize, marginBottom: theme.spacing.xs }}>Categorias</div>
+          <div className="field-box" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {selectedTagIds.length === 0 ? (
+              <div style={{ opacity: 0.7 }}>Nenhuma categoria</div>
+            ) : (
+              selectedTagIds.map((tid) => {
+                const t = tags.find((x) => String(x.id) === String(tid));
+                const name = t ? t.name : String(tid);
+                return (
+                  <span key={tid} style={{ padding: '4px 8px', borderRadius: 999, background: '#eef3ff', border: '1px solid #e5e7eb', fontSize: 12 }}>
+                    {name}
+                    <button
+                      onClick={() => setSelectedTagIds((prev) => prev.filter((id) => String(id) !== String(tid)))}
+                      style={{ marginLeft: 6, padding: '0 6px', borderRadius: 999, border: 'none', background: '#d1d5db', color: '#111', cursor: 'pointer' }}
+                    >x</button>
+                  </span>
+                );
+              })
+            )}
+          </div>
+          <Select
+            value={""}
+            onChange={(v) => {
+              const id = v ? String(v) : null;
+              if (!id) return;
+              if (id === "__create__") { setCreatingTagInline(true); return; }
+              setSelectedTagIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+            }}
+            options={[...tags.map((t) => ({ value: String(t.id), label: t.name })), { value: "__create__", label: "Adicionar/criar categoria" }]}
+            placeholder="Adicionar categoria"
+            style={{ width: 240 }}
+          />
+          {creatingTagInline ? (
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <Input placeholder="Nome da categoria" value={newTagName} onChange={setNewTagName} />
+              <button
+                onClick={async () => {
+                  const name = newTagName.trim();
+                  if (!name) return;
+                  try {
+                    const tRes = await api.post('/tags', { name });
+                    const newTag = tRes?.data;
+                    if (newTag?.id) {
+                      setTags((prev) => [...prev, newTag]);
+                      setSelectedTagIds((prev) => (prev.includes(String(newTag.id)) ? prev : [...prev, String(newTag.id)]));
+                    }
+                  } catch {
+                    const existing = tags.find((t) => String(t.name).toLowerCase() === name.toLowerCase());
+                    if (existing) {
+                      setSelectedTagIds((prev) => (prev.includes(String(existing.id)) ? prev : [...prev, String(existing.id)]));
+                    } else {
+                      alert('Não foi possível criar a categoria');
+                    }
+                  } finally {
+                    try { const list = await api.get('/tags'); setTags(list.data || []); } catch { void 0; }
+                    setCreatingTagInline(false);
+                    setNewTagName('');
+                  }
+                }}
+                style={{ padding: '8px 12px', borderRadius: theme.radius.sm, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, cursor: 'pointer' }}
+              >Pronto</button>
+            </div>
+          ) : null}
+        </div>
+        <div style={{ fontSize: 12, opacity: 0.7 }}>Status: {createForStatus}</div>
+      </div>
       </Modal>
 
       <Modal
@@ -921,6 +1194,77 @@ function App({ projectId }) {
                   {detailDraft.descricao || "Sem descrição"}
                 </div>
               )}
+            </div>
+            <div style={{ gridColumn: "1 / 3", gridRow: "6", marginTop: theme.spacing.md }}>
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Base de conhecimento</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  value={kbTerm}
+                  onChange={(e) => setKbTerm(e.target.value)}
+                  placeholder="Buscar artigos"
+                  onKeyDown={(e) => { if (e.key === 'Enter') searchKb(); }}
+                  style={{ padding: 8, borderRadius: 6, border: `1px solid ${theme.colors.border}`, width: 300, background: theme.colors.white, color: theme.colors.text }}
+                />
+                <button onClick={searchKb} style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, cursor: "pointer" }}>Buscar</button>
+                <button onClick={openKbCreate} style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, cursor: "pointer" }}>Criar artigo</button>
+              </div>
+              {kbCreating ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
+                  <div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>Título</div>
+                    <Input value={kbCreateTitle} onChange={setKbCreateTitle} placeholder="Título do artigo" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>Categoria</div>
+                    <Select value={kbCreateCategoryId} onChange={setKbCreateCategoryId} options={kbCategories.map((c) => ({ value: String(c.id), label: c.nome }))} placeholder={kbCategoriesLoading ? "Carregando categorias..." : "Selecione"} disabled={kbCategoriesLoading} />
+                  </div>
+                  <div style={{ gridColumn: "1 / 3" }}>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>Conteúdo</div>
+                    <Input multiline value={kbCreateContent} onChange={setKbCreateContent} placeholder="Conteúdo HTML" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>Visibilidade</div>
+                    <Select value={kbCreateVisibility} onChange={setKbCreateVisibility} options={[{ value: "interno", label: "Interno" }, { value: "cliente", label: "Cliente" }, { value: "publico", label: "Público" }]} />
+                  </div>
+                  <div style={{ display: "flex", gap: theme.spacing.sm, alignItems: "center" }}>
+                    <PrimaryButton onClick={createKb} disabled={kbBusy || !kbCreateCategoryId} style={{ marginTop: 0 }}>Salvar rascunho</PrimaryButton>
+                    <button onClick={() => setKbCreating(false)} style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, cursor: "pointer" }}>Cancelar</button>
+                  </div>
+                </div>
+              ) : null}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
+                <div>
+                  <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Artigos encontrados</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {!kbBusy && kbResults.length === 0 ? (
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>Nenhum artigo encontrado para a busca.</div>
+                    ) : null}
+                    {kbResults.map((a) => (
+                      <div key={a.id} className="field-box" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{a.titulo}</div>
+                          <div style={{ fontSize: 12, opacity: 0.7 }}>{a.categoria?.nome}</div>
+                        </div>
+                        <button onClick={() => attachKb(a.id)} disabled={kbBusy} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, cursor: "pointer" }}>Vincular</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Artigos vinculados</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {kbLinked.map((a) => (
+                      <div key={a.id} className="field-box" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{a.titulo}</div>
+                          <div style={{ fontSize: 12, opacity: 0.7 }}>{a.categoria?.nome}</div>
+                        </div>
+                        <button onClick={() => detachKb(a.id)} disabled={kbBusy} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, cursor: "pointer" }}>Desvincular</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
             <div style={{ gridColumn: "1 / 2", gridRow: "5" }}>
               <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Atualizações</div>

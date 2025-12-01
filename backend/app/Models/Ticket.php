@@ -21,8 +21,12 @@ class Ticket extends Model
         'status',
         'prioridade',
         'responsavel_id',
+        'assigned_to_user_id',
         'solicitante_id',
         'data_prevista',
+        'sla_hours',
+        'due_at',
+        'resolved_at',
     ];
 
     protected $casts = [
@@ -30,13 +34,22 @@ class Ticket extends Model
         'status' => TicketStatus::class,
         'prioridade' => TicketPriority::class,
         'data_prevista' => 'date',
+        'due_at' => 'date',
+        'resolved_at' => 'datetime',
         'responsavel_id' => 'integer',
+        'assigned_to_user_id' => 'integer',
         'solicitante_id' => 'integer',
+        'sla_hours' => 'integer',
     ];
 
     public function responsavel()
     {
         return $this->belongsTo(User::class, 'responsavel_id');
+    }
+
+    public function assignedTo()
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
     }
 
     public function solicitante()
@@ -52,6 +65,21 @@ class Ticket extends Model
     public function updates()
     {
         return $this->hasMany(TicketUpdate::class);
+    }
+
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class, 'ticket_tag');
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(TicketAttachment::class);
+    }
+
+    public function kbArticles()
+    {
+        return $this->belongsToMany(KbArticle::class, 'kb_article_ticket');
     }
 
     public function scopeByStatus(Builder $query, TicketStatus|string|null $status): Builder
@@ -82,6 +110,14 @@ class Ticket extends Model
         if (!$from && !$to) return $query;
         if ($from) $query->whereDate('data_prevista', '>=', $from);
         if ($to) $query->whereDate('data_prevista', '<=', $to);
+        return $query;
+    }
+
+    public function scopeInDueDateRange(Builder $query, ?string $from, ?string $to): Builder
+    {
+        if (!$from && !$to) return $query;
+        if ($from) $query->whereDate('due_at', '>=', $from);
+        if ($to) $query->whereDate('due_at', '<=', $to);
         return $query;
     }
 

@@ -10,6 +10,4 @@ export interface SidebarProps {
   canCreateProject?: boolean;
   onRenameProject?: (projectKey: string) => void;
   onDeleteProject?: (projectKey: string) => void;
-  userList?: { id: number; name: string; email: string }[];
-  onLinkMember?: (projectKey: string, payload: { id?: number; email?: string }) => void;
 }

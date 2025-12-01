@@ -30,8 +30,15 @@ class TicketUpdateController extends Controller
             'ticket_id' => $ticket->id,
             'user_id' => $request->user()?->id,
             'conteudo' => $data['conteudo'],
+            'type' => 'comment',
         ]);
-
+        // system log
+        TicketUpdate::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => null,
+            'conteudo' => 'Novo comentário',
+            'type' => 'system',
+        ]);
         return (new TicketUpdateResource($update->load('user')))
             ->response()
             ->setStatusCode(201);

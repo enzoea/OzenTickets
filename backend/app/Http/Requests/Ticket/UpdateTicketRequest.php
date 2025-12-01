@@ -23,8 +23,14 @@ class UpdateTicketRequest extends FormRequest
             'status' => ['sometimes', Rule::enum(TicketStatus::class)],
             'prioridade' => ['sometimes', Rule::enum(TicketPriority::class)],
             'responsavel_id' => ['sometimes','nullable','exists:users,id'],
+            'assigned_to_user_id' => ['sometimes','nullable','exists:users,id'],
             'solicitante_id' => ['sometimes','nullable','exists:users,id'],
             'data_prevista' => ['sometimes','nullable','date'],
+            'sla_hours' => ['sometimes','nullable','integer','min:1'],
+            'due_at' => ['sometimes','nullable','date'],
+            'resolved_at' => ['sometimes','nullable','date'],
+            'tag_ids' => ['sometimes','array'],
+            'tag_ids.*' => ['integer','exists:tags,id'],
             'project_id' => ['sometimes','exists:projects,id'],
         ];
     }

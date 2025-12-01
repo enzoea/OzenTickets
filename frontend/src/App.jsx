@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Login from "./screen/Login/index";
 import Home from "./screen/Home/index";
 import Dashboard from "./screen/Dashboard/index";
+import KnowledgeBase from "./screen/KnowledgeBase/index";
 import UsersPage from "./screen/UsersPage/index";
 import Sidebar from "./components/Sidebar";
 import { theme } from "./theme";
@@ -147,6 +148,7 @@ export default function App() {
       <Sidebar
         items={[
           { key: "overview", label: "Visão geral" },
+          { key: "kb", label: "Base de conhecimento" },
           ...projects.map((p) => ({
             key: `project:${p.id}`,
             label: p.nome,
@@ -175,6 +177,7 @@ export default function App() {
           const { projectId, view } = parsePage(page);
           if (view === "users" && isAdmin) return <UsersPage />;
           if (view === "overview") return <Dashboard />;
+          if (view === "kb") return <KnowledgeBase />;
           if (!projectId) {
             return (
               <div style={{ padding: 24 }}>

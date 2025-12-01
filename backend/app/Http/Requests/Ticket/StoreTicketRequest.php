@@ -23,8 +23,14 @@ class StoreTicketRequest extends FormRequest
             'status' => [Rule::enum(TicketStatus::class)],
             'prioridade' => ['nullable', Rule::enum(TicketPriority::class)],
             'responsavel_id' => ['nullable','exists:users,id'],
+            'assigned_to_user_id' => ['nullable','exists:users,id'],
             'solicitante_id' => ['nullable','exists:users,id'],
             'data_prevista' => ['nullable','date'],
+            'sla_hours' => ['nullable','integer','min:1'],
+            'due_at' => ['nullable','date'],
+            'resolved_at' => ['nullable','date'],
+            'tag_ids' => ['nullable','array'],
+            'tag_ids.*' => ['integer','exists:tags,id'],
             'project_id' => ['required','exists:projects,id'],
         ];
     }

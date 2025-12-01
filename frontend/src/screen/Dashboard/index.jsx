@@ -31,6 +31,7 @@ Chart.register(
 export default function Dashboard({ projectId }) {
   const [tickets, setTickets] = useState([]);
   const [users, setUsers] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ticketOrder, setTicketOrder] = useState("newest");
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -73,6 +74,8 @@ export default function Dashboard({ projectId }) {
         await loadTickets();
         const uRes = await api.get("/user-list");
         setUsers(uRes.data);
+        const pRes = await api.get("/projects");
+        setProjects(pRes.data || []);
       } finally {
         setLoading(false);
       }
@@ -186,15 +189,17 @@ export default function Dashboard({ projectId }) {
     }, {})
   );
 
-  const bySolicitante = Object.values(
+  const byProject = Object.values(
     filteredTickets.reduce((acc, t) => {
-      const key = t.solicitante_id == null ? "__none__" : String(t.solicitante_id);
-      const name = t.solicitante?.name ?? "(não informado)";
-      acc[key] = acc[key] || { user_id: key, name, total: 0 };
+      const key = t.project_id == null ? "__none__" : String(t.project_id);
+      const name = t.project_id == null ? "Sem projeto" : (projects.find((p) => String(p.id) === String(t.project_id))?.nome ?? String(t.project_id));
+      acc[key] = acc[key] || { project_id: key, name, total: 0 };
       acc[key].total += 1;
       return acc;
     }, {})
   );
+
+  
 
   const hasFilters = selectedUserIds.length > 0 || Boolean(dateFrom) || Boolean(dateTo) || Boolean(dateCreatedFrom) || Boolean(dateCreatedTo);
 
@@ -210,12 +215,43 @@ export default function Dashboard({ projectId }) {
     ],
   };
 
-  const pieSolicitanteData = {
-    labels: bySolicitante.map((u) => u.name),
+  const pieProjectData = {
+    labels: byProject.map((p) => p.name),
     datasets: [
       {
-        data: bySolicitante.map((u) => u.total),
-        backgroundColor: bySolicitante.map((_, i) => theme.palettes.blue[i % theme.palettes.blue.length]),
+        data: byProject.map((p) => p.total),
+        backgroundColor: byProject.map((_, i) => theme.palettes.blue[i % theme.palettes.blue.length]),
+      },
+    ],
+  };
+
+  
+
+  const byTag = Object.values(
+    filteredTickets.reduce((acc, t) => {
+      const arr = Array.isArray(t.tags) ? t.tags : [];
+      if (arr.length === 0) {
+        acc.__none__ = acc.__none__ || { name: "Sem categoria", total: 0 };
+        acc.__none__.total += 1;
+      } else {
+        arr.forEach((tag) => {
+          const key = String(tag.id);
+          const name = tag.name || "(sem nome)";
+          acc[key] = acc[key] || { name, total: 0 };
+          acc[key].total += 1;
+        });
+      }
+      return acc;
+    }, {})
+  );
+
+  const barTagData = {
+    labels: byTag.map((t) => t.name),
+    datasets: [
+      {
+        label: "Tickets",
+        data: byTag.map((t) => t.total),
+        backgroundColor: byTag.map((_, i) => theme.palettes.blue[i % theme.palettes.blue.length]),
       },
     ],
   };
@@ -231,15 +267,7 @@ export default function Dashboard({ projectId }) {
     ],
   };
 
-  const pieStatusData = {
-    labels: byStatus.map((s) => s.status),
-    datasets: [
-      {
-        data: byStatus.map((s) => s.total),
-        backgroundColor: byStatus.map((s) => colorForStatus(s.status, "pie", theme)),
-      },
-    ],
-  };
+  
 
   const chartOptions = {
     responsive: true,
@@ -249,6 +277,8 @@ export default function Dashboard({ projectId }) {
       tooltip: { enabled: true },
     },
   };
+
+  
 
   const filterDropdown = filterOpen ? (
     <div
@@ -469,25 +499,26 @@ export default function Dashboard({ projectId }) {
         })()}
       </div>
 
-      <div className={loading ? "blur-loading" : ""} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: theme.spacing.lg, marginTop: theme.spacing.md, alignItems: "start" }}>
-        <div style={{ width: "100%", height: 280 }}>
-          <h3>Tickets por responsável</h3>
-          <Pie data={pieData} options={chartOptions} />
-        </div>
-
-        <div style={{ width: "100%", height: 280 }}>
-          <h3>Tickets por solicitante</h3>
-          <Pie data={pieSolicitanteData} options={chartOptions} />
-        </div>
-
+      <div className={loading ? "blur-loading dashboard-grid" : "dashboard-grid"} style={{ marginTop: theme.spacing.md }}>
         <div style={{ width: "100%", height: 300 }}>
+          <h3>Tickets por responsável</h3>
+          <Bar data={pieData} options={chartOptions} />
+        </div>
+
+        <div style={{ width: "100%", height: 320 }}>
           <h3>Tickets por status</h3>
           <Bar data={barData} options={chartOptions} />
         </div>
 
-        <div style={{ width: "100%", height: 280 }}>
-          <h3>Distribuição por status</h3>
-          <Pie data={pieStatusData} options={chartOptions} />
+        <div style={{ width: "100%", height: 300 }}>
+          <h3>Tickets por projeto</h3>
+          <Pie data={pieProjectData} options={chartOptions} />
+        </div>
+
+
+        <div style={{ width: "100%", height: 300 }}>
+          <h3>Distribuição por categoria</h3>
+          <Pie data={barTagData} options={chartOptions} />
         </div>
       </div>
       <div style={{ marginTop: theme.spacing.lg }}>

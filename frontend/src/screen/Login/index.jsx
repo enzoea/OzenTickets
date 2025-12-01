@@ -32,6 +32,7 @@ export default function Login({ onLogin }) {
   };
 
   return (
+    
     <div
       style={{
         minHeight: "100vh",
@@ -40,19 +41,29 @@ export default function Login({ onLogin }) {
         justifyContent: "center",
         background: "#ffffff",
         fontFamily: "system-ui",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <div className={loading ? "blur-loading" : ""}
-        style={{
-          width: 320,
-          padding: 24,
-          borderRadius: 8,
-          background: "#fff",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-        }}
-      >
-        <h2 style={{ marginTop: 0, marginBottom: 16 }}>Login</h2>
-
+      <div className="bg-blobs" aria-hidden="true">
+        <div className="bg-blob one" />
+        <div className="bg-blob two" />
+        <div className="bg-blob three" />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, position: "relative", zIndex: 1 }}>
+        <div className={loading ? "blur-loading" : ""}
+          style={{
+            width: 320,
+            padding: 24,
+            borderRadius: 8,
+            background: "#fff",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+        
+          <h2 style={{ marginTop: 0, marginBottom: 16 }}>Realizar Login</h2>
         <form
           onSubmit={handleSubmit}
           style={{ display: "flex", flexDirection: "column", gap: 12 }}
@@ -75,6 +86,7 @@ export default function Login({ onLogin }) {
             {loading ? "Entrando..." : "Entrar"}
           </PrimaryButton>
         </form>
+        </div>
       </div>
     </div>
   );

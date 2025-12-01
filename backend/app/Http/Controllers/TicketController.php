@@ -12,9 +12,11 @@ class TicketController extends Controller
 {
     public function index(\Illuminate\Http\Request $request)
     {
-        $ids = (array) $request->query('responsavel_id', []);
+        $ids = (array) ($request->query('assigned_to_user_id', []) ?: $request->query('responsavel_id', []));
         $from = $request->query('from');
         $to = $request->query('to');
+        $dueFrom = $request->query('due_from');
+        $dueTo = $request->query('due_to');
         $status = $request->query('status');
         $q = $request->query('q');
         $projectId = $request->query('project_id');
@@ -31,6 +33,7 @@ class TicketController extends Controller
         $query = Ticket::query()
             ->ofUsers($ids)
             ->inDateRange($from, $to)
+            ->inDueDateRange($dueFrom, $dueTo)
             ->byStatus($status)
             ->matchesQuery($q)
             ->when(!$projectId, function ($q2) use ($userProjectIds) {
@@ -41,7 +44,7 @@ class TicketController extends Controller
                 }
             })
             ->ofProject($projectId)
-            ->with(['responsavel','solicitante']);
+            ->with(['responsavel','solicitante','assignedTo','tags']);
 
         return TicketResource::collection($query->orderBy('created_at', 'desc')->get());
     }
@@ -55,7 +58,7 @@ class TicketController extends Controller
         if (!$hasAccess) return response()->json(['message' => 'Sem acesso ao projeto'], 403);
 
         $ticket = $service->create($request->validated());
-        return (new TicketResource($ticket->load('responsavel')))
+        return (new TicketResource($ticket->load(['responsavel','assignedTo','tags'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -66,6 +69,6 @@ class TicketController extends Controller
             return response()->json(['message' => 'Apenas visualização para usuários cliente'], 403);
         }
         $service->update($ticket, $request->validated());
-        return new TicketResource($ticket->load('responsavel'));
+        return new TicketResource($ticket->load(['responsavel','assignedTo','tags']));
     }
 }

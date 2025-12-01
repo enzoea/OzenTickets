@@ -5,15 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class TicketUpdate extends Model
+class TicketAttachment extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'ticket_id',
         'user_id',
-        'conteudo',
-        'type',
+        'path',
+        'mime',
+        'original_name',
+        'size',
     ];
 
     public function ticket()
@@ -26,3 +28,4 @@ class TicketUpdate extends Model
         return $this->belongsTo(User::class);
     }
 }
+

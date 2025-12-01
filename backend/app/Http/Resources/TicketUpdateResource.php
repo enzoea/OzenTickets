@@ -19,8 +19,8 @@ class TicketUpdateResource extends JsonResource
                 ] : null;
             }),
             'conteudo' => $this->conteudo,
+            'type' => $this->type,
             'created_at' => $this->created_at ? $this->created_at->toIso8601String() : null,
         ];
     }
 }
-

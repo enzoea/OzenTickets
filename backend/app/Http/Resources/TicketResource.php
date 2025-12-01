@@ -24,6 +24,13 @@ class TicketResource extends JsonResource
                     'name' => $this->responsavel->name,
                 ] : null;
             }),
+            'assigned_to_user_id' => $this->assigned_to_user_id,
+            'assigned_to' => $this->whenLoaded('assignedTo', function () {
+                return $this->assignedTo ? [
+                    'id' => $this->assignedTo->id,
+                    'name' => $this->assignedTo->name,
+                ] : null;
+            }),
             'solicitante_id' => $this->solicitante_id,
             'solicitante' => $this->whenLoaded('solicitante', function () {
                 return $this->solicitante ? [
@@ -32,6 +39,14 @@ class TicketResource extends JsonResource
                 ] : null;
             }),
             'data_prevista' => $this->data_prevista ? $this->data_prevista->toDateString() : null,
+            'sla_hours' => $this->sla_hours,
+            'due_at' => $this->due_at ? $this->due_at->toDateString() : null,
+            'resolved_at' => $this->resolved_at ? $this->resolved_at->toIso8601String() : null,
+            'tags' => $this->whenLoaded('tags', function () {
+                return $this->tags->map(function ($t) {
+                    return ['id' => $t->id, 'name' => $t->name, 'slug' => $t->slug];
+                });
+            }),
             'created_at' => $this->created_at ? $this->created_at->toIso8601String() : null,
             'updated_at' => $this->updated_at ? $this->updated_at->toIso8601String() : null,
         ];
