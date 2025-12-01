@@ -16,6 +16,9 @@ class KbCategoryController extends Controller
 
     public function store(Request $request)
     {
+        if (($request->user()?->tipo ?? null) === 'cliente') {
+            return response()->json(['message' => 'Apenas colaboradores/admin podem criar categorias'], 403);
+        }
         $data = $request->validate([
             'nome' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
@@ -40,4 +43,3 @@ class KbCategoryController extends Controller
         return response()->noContent();
     }
 }
-

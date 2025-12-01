@@ -147,17 +147,21 @@ export default function App() {
     >
       <Sidebar
         items={[
-          { key: "overview", label: "Visão geral" },
+          { key: "overview", label: "Visão Geral" },
           { key: "kb", label: "Base de conhecimento" },
-          ...projects.map((p) => ({
-            key: `project:${p.id}`,
-            label: p.nome,
-            children: [
-              { key: `project:${p.id}:tickets`, label: "Tickets" },
-              { key: `project:${p.id}:dashboard`, label: "Dashboard" },
-              { key: `project:${p.id}:members`, label: "Vincular colaborador" },
-            ],
-          })),
+          {
+            key: "projects",
+            label: "Projetos",
+            children: projects.map((p) => ({
+              key: `project:${p.id}`,
+              label: p.nome,
+              children: [
+                { key: `project:${p.id}:tickets`, label: "Tickets" },
+                { key: `project:${p.id}:dashboard`, label: "Dashboard" },
+                { key: `project:${p.id}:members`, label: "Vincular colaborador" },
+              ],
+            })),
+          },
           ...(isAdmin ? [{ key: "users", label: "Usuários" }] : []),
         ]}
         activeKey={page ?? ""}

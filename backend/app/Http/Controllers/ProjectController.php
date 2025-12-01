@@ -55,6 +55,16 @@ class ProjectController extends Controller
 
     public function addMember(Request $request, Project $project)
     {
+        $current = $request->user();
+        if (($current?->tipo ?? null) === 'cliente') {
+            return response()->json(['message' => 'Apenas colaboradores/admin podem vincular usuários'], 403);
+        }
+        if (!$current?->is_admin) {
+            $hasAccess = $current?->projects()->where('projects.id', $project->id)->exists();
+            if (!$hasAccess) {
+                return response()->json(['message' => 'Sem acesso ao projeto'], 403);
+            }
+        }
         $data = $request->validate([
             'user_id' => ['nullable','exists:users,id'],
             'email' => ['nullable','string','max:255'],
@@ -72,6 +82,16 @@ class ProjectController extends Controller
 
     public function removeMember(Project $project, \App\Models\User $user)
     {
+        $current = request()->user();
+        if (($current?->tipo ?? null) === 'cliente') {
+            return response()->json(['message' => 'Apenas colaboradores/admin podem desvincular usuários'], 403);
+        }
+        if (!$current?->is_admin) {
+            $hasAccess = $current?->projects()->where('projects.id', $project->id)->exists();
+            if (!$hasAccess && $current?->id !== $user->id) {
+                return response()->json(['message' => 'Sem acesso ao projeto'], 403);
+            }
+        }
         $project->users()->detach($user->id);
         return response()->json(['unlinked' => true]);
     }

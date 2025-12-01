@@ -22,15 +22,34 @@ export default function Sidebar({ items, activeKey, onSelect, user, onLogout, on
     return () => document.removeEventListener('mousedown', handler);
   }, [ctxKey]);
 
+  useEffect(() => {
+    const proj = items.find((it) => it.key === 'projects');
+    if (proj && (!proj.children || proj.children.length === 0)) {
+      setOpen((prev) => ({ ...prev, projects: true }));
+    }
+  }, [items]);
+
   const renderItem = (it: SidebarItem) => {
-    if (it.children && it.children.length > 0) {
+    const isProjectsGroup = it.key === 'projects';
+    const hasChildren = isProjectsGroup || !!(it.children && it.children.length > 0);
+    if (hasChildren) {
       const isOpen = !!open[it.key];
+      const isProjectItem = it.key.startsWith('project:');
       return (
         <div key={it.key}>
-          <button data-role="proj-button" style={navButtonStyle(false)} onClick={() => toggle(it.key)} onContextMenu={(e) => { e.preventDefault(); setCtxKey(it.key); }}>
+          <button
+            data-role="proj-button"
+            style={navButtonStyle(false)}
+            onClick={() => toggle(it.key)}
+            onContextMenu={(e) => {
+              if (!isProjectItem) return;
+              e.preventDefault();
+              setCtxKey(it.key);
+            }}
+          >
             {it.label} {isOpen ? "▾" : "▸"}
           </button>
-          {ctxKey === it.key ? (
+          {ctxKey === it.key && isProjectItem ? (
             <div data-role="ctx-menu" style={{ display: "flex", flexDirection: "column", gap: 8, margin: "6px 0 8px 12px" }}>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -51,12 +70,27 @@ export default function Sidebar({ items, activeKey, onSelect, user, onLogout, on
             </div>
           ) : null}
           {isOpen ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 12 }}>
-              {it.children.map((ch) => (
-                <button key={ch.key} style={navButtonStyle(activeKey === ch.key)} onClick={() => onSelect(ch.key)}>
-                  {ch.label}
-                </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 12, marginTop: (isProjectsGroup || isProjectItem) ? 12 : 0 }}>
+              {it.children!.map((ch) => (
+                <div key={ch.key}>
+                  {ch.children && ch.children.length > 0
+                    ? renderItem(ch)
+                    : (
+                      <button style={navButtonStyle(activeKey === ch.key)} onClick={() => onSelect(ch.key)}>
+                        {ch.label}
+                      </button>
+                    )}
+                </div>
               ))}
+              {isProjectsGroup && onCreateProject ? (
+                <button
+                  onClick={onCreateProject}
+                  style={navButtonStyle(false)}
+                  disabled={!canCreateProject}
+                >
+                  + Cadastrar projeto
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -77,15 +111,6 @@ export default function Sidebar({ items, activeKey, onSelect, user, onLogout, on
         <div style={{ padding: 16, fontWeight: 700 }}>Painel de Demandas</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 8 }}>
           {mainItems.map(renderItem)}
-          {onCreateProject ? (
-            <button
-              onClick={onCreateProject}
-              style={navButtonStyle(false)}
-              disabled={!canCreateProject}
-            >
-              + Cadastrar projeto
-            </button>
-          ) : null}
         </div>
       </div>
 

@@ -36,15 +36,15 @@ class TicketController extends Controller
             ->inDueDateRange($dueFrom, $dueTo)
             ->byStatus($status)
             ->matchesQuery($q)
-            ->when(!$projectId, function ($q2) use ($userProjectIds) {
-                if (count($userProjectIds) > 0) {
-                    $q2->whereIn('project_id', $userProjectIds);
-                } else {
-                    $q2->whereRaw('1=0');
-                }
-            })
             ->ofProject($projectId)
             ->with(['responsavel','solicitante','assignedTo','tags']);
+
+        if (!$projectId && count($userProjectIds) > 0) {
+            $query->where(function ($sub) use ($userProjectIds) {
+                $sub->whereIn('project_id', $userProjectIds)
+                    ->orWhereNull('project_id');
+            });
+        }
 
         return TicketResource::collection($query->orderBy('created_at', 'desc')->get());
     }

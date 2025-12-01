@@ -6,6 +6,7 @@ use App\Models\KbArticle;
 use App\Models\Ticket;
 use App\Http\Resources\KbArticleResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class KbArticleController extends Controller
 {
@@ -77,9 +78,30 @@ class KbArticleController extends Controller
             'visibilidade' => ['required', 'in:interno,cliente,publico'],
         ]);
         $data['user_id'] = $request->user()->id;
+        if (empty($data['slug'])) {
+            $base = Str::slug($data['titulo']);
+            $slug = $base;
+            $i = 1;
+            while (KbArticle::where('slug', $slug)->exists()) {
+                $slug = $base.'-'.$i;
+                $i++;
+            }
+            $data['slug'] = $slug;
+        } else {
+            $base = Str::slug($data['slug']);
+            $slug = $base;
+            $i = 1;
+            while (KbArticle::where('slug', $slug)->exists()) {
+                $slug = $base.'-'.$i;
+                $i++;
+            }
+            $data['slug'] = $slug;
+        }
         $article = KbArticle::create($data);
         $article->load(['author', 'category']);
-        return new KbArticleResource($article);
+        return (new KbArticleResource($article))
+            ->response()
+            ->setStatusCode(201);
     }
 
     public function update(Request $request, KbArticle $article)
@@ -92,6 +114,16 @@ class KbArticleController extends Controller
             'status' => ['sometimes', 'in:rascunho,publicado,arquivado'],
             'visibilidade' => ['sometimes', 'in:interno,cliente,publico'],
         ]);
+        if (array_key_exists('slug', $data)) {
+            $base = $data['slug'] ? Str::slug($data['slug']) : Str::slug($data['titulo'] ?? $article->titulo);
+            $slug = $base;
+            $i = 1;
+            while (KbArticle::where('slug', $slug)->where('id', '!=', $article->id)->exists()) {
+                $slug = $base.'-'.$i;
+                $i++;
+            }
+            $data['slug'] = $slug;
+        }
         $article->update($data);
         $article->load(['author', 'category']);
         return new KbArticleResource($article);
@@ -105,6 +137,14 @@ class KbArticleController extends Controller
 
     public function attachTicket(Request $request, KbArticle $article, Ticket $ticket)
     {
+        if (($request->user()?->tipo ?? null) === 'cliente') {
+            return response()->json(['message' => 'Apenas colaboradores/admin podem vincular artigos'], 403);
+        }
+        $user = $request->user();
+        $pid = $ticket->project_id;
+        if ($pid && !$user?->projects()->where('projects.id', $pid)->exists()) {
+            return response()->json(['message' => 'Sem acesso ao projeto'], 403);
+        }
         $tipo = $request->input('tipo_relacao');
         $article->tickets()->syncWithoutDetaching([$ticket->id => ['tipo_relacao' => $tipo]]);
         return response()->noContent();
@@ -112,6 +152,14 @@ class KbArticleController extends Controller
 
     public function detachTicket(KbArticle $article, Ticket $ticket)
     {
+        $user = request()->user();
+        if (($user?->tipo ?? null) === 'cliente') {
+            return response()->json(['message' => 'Apenas colaboradores/admin podem desvincular artigos'], 403);
+        }
+        $pid = $ticket->project_id;
+        if ($pid && !$user?->projects()->where('projects.id', $pid)->exists()) {
+            return response()->json(['message' => 'Sem acesso ao projeto'], 403);
+        }
         $article->tickets()->detach($ticket->id);
         return response()->noContent();
     }

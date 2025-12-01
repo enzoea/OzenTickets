@@ -22,14 +22,14 @@ class MetricController extends Controller
             ->ofUsers($ids)
             ->inDateRange($from, $to)
             ->byStatus($status)
-            ->when(!$projectId, function ($q2) use ($userProjectIds) {
-                if (count($userProjectIds) > 0) {
-                    $q2->whereIn('project_id', $userProjectIds);
-                } else {
-                    $q2->whereRaw('1=0');
-                }
-            })
             ->ofProject($projectId);
+
+        if (!$projectId && count($userProjectIds) > 0) {
+            $query->where(function ($sub) use ($userProjectIds) {
+                $sub->whereIn('project_id', $userProjectIds)
+                    ->orWhereNull('project_id');
+            });
+        }
 
         if ($projectId && !in_array((int) $projectId, $userProjectIds, true)) {
             return Ticket::query()->whereRaw('1=0');
