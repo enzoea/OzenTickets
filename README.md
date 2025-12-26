@@ -1,171 +1,89 @@
 # Painel de Demandas
 
-Sistema simples para gestão de tickets com Kanban, filtros por data e pessoas, comentários, e administração de usuários com perfis de acesso.
+Aplicação full‑stack para gestão de projetos e tickets com autenticação, base de conhecimento e painel de métricas.
 
-## Funcionalidades
+## Stack
 
-- Kanban de tickets com status: `backlog`, `a_fazer`, `fazendo`, `pronto`, `para_teste`, `em_teste`, `finalizado`.
-- Campos do ticket: título, subtítulo, descrição, responsável, solicitante, previsão (`data_prevista`), prioridade.
-- Comentários por ticket (histórico de atualizações), com editar e excluir quando permitido.
-- Filtros na Home:
-  - Pessoas (responsável), incluindo opção “Sem responsável”.
-  - Período de Previsão (de/até).
-  - Período de Criação (de/até).
-- Administração de usuários:
-  - Cadastro, listagem, remoção.
-  - Edição (nome, e-mail, senha, setor, cargo, admin, tipo).
-  - Campo `tipo` com dois perfis:
-    - `colaborador`: acesso normal (criar/editar/mover/excluir onde aplicável).
-    - `cliente`: somente visualização — botões e campos desabilitados no frontend e bloqueio de escrita no backend.
-- Regras de permissão no backend:
-  - `can:manage-users` definido para administradores (is_admin) em `backend/app/Providers/AppServiceProvider.php`.
-  - Usuários `cliente` não podem criar/editar tickets ou comentários.
+- Backend: Laravel (Sanctum para API tokens, Mail, Cache)
+- Frontend: React + Vite
+- Banco: SQLite (padrão) ou outro via `.env`
 
-- Base de conhecimento: categorias e artigos com busca e filtros no topo e resultados listados verticalmente; possibilidade de vincular artigos a tickets.
-- Projetos e tags: organização e classificação de tickets, com endpoints para CRUD e associação.
-- Anexos de tickets: upload, listagem e remoção de arquivos vinculados aos tickets.
+## Executar localmente
 
-## Requisitos
+1. Backend
+   - Copie `.env.example` para `.env` e ajuste banco e mailer
+   - Instale dependências: `composer install`
+   - Rode migrations: `php artisan migrate`
+   - Inicie servidor: `php artisan serve` (http://127.0.0.1:8000)
 
-- PHP 8.2+
-- Composer
-- Node.js 20.19+ (ou 22.12+)
-- NPM 10+
-- SQLite (padrão) ou outro banco suportado pelo Laravel (configurável).
+2. Frontend
+   - Instale dependências: `npm install` (na pasta `frontend`)
+   - Inicie dev server: `npm run dev` (http://localhost:5173)
 
-## Tecnologias Utilizadas
+## Autenticação e Cadastro
 
-- Frontend: React 19, Vite 7, Axios, Chart.js + react-chartjs-2, ESLint 9.
-- Backend: Laravel 12, Sanctum, Vite (laravel-vite-plugin), Tailwind CSS 4, PHPUnit.
-- Banco: SQLite por padrão (MySQL/MariaDB/PostgreSQL suportados via `.env`).
-- Orquestração: `concurrently` via script Composer para desenvolvimento integrado no backend.
+- `POST /api/register`: cria usuário colaborador e retorna `{ token, user }`
+- `POST /api/login`: autentica e retorna `{ token, user }`
+- `GET /api/me`: dados do usuário autenticado
+- `POST /api/logout`: revoga tokens
 
-## Backend (Laravel)
+### Recuperação de Senha
 
-1) Instalação e configuração
+- `POST /api/forgot-password`: envia código de 6 dígitos por e‑mail
+- `POST /api/reset-password`: redefine senha com `{ email, code, password }`
+- Em desenvolvimento, use `MAIL_MAILER=log` para ver conteúdo do e‑mail em `storage/logs/laravel.log`
 
-```powershell
-cd backend
-composer install
-php -r "file_exists('.env') || copy('.env.example', '.env');"
-# Para SQLite (padrão)
-php -r "file_exists('database/database.sqlite') || touch('database/database.sqlite');"
-php artisan key:generate
-```
+## Projetos e Tickets
 
-2) Ajuste o `.env` (SQLite)
+- `GET /api/projects`: lista projetos do usuário
+- `POST /api/projects`: cria projeto
+- `PUT /api/projects/{id}`: renomeia
+- `DELETE /api/projects/{id}`: exclui
+- `GET /api/projects/{id}/members`: lista membros
+- `POST /api/projects/{id}/members`: vincula por `user_id` ou `email`
+- `DELETE /api/projects/{id}/members/{userId}`: desvincula membro
 
-```
-DB_CONNECTION=sqlite
-DB_DATABASE=database/database.sqlite
-```
+### Dashboard e Métricas
 
-3) Migrações e seeders
+- Tickets sem projeto (`project_id=null`) são incluídos nas métricas e listas quando aplicável
 
-```powershell
-php artisan migrate --force
-php artisan db:seed
-```
+## Base de Conhecimento (KB)
 
-4) Servidor de desenvolvimento
+- Colaboradores e admins podem criar categorias (`POST /api/kb/categories`)
+- Ações administrativas mantidas sob `can:manage-users` quando necessário
 
-```powershell
-php artisan serve
-# Endpoint padrão: http://127.0.0.1:8000/
-```
+## Frontend
 
-## Frontend (Vite + React)
+- Navegação por `Sidebar`, com grupo **Projetos**:
+  - Botão `+ Cadastrar projeto` aparece mesmo sem projetos
+  - Itens internos: `Tickets`, `Dashboard`, `Vincular colaborador`
+- Tela de Login
+  - Login, Cadastro e Recuperação de senha no mesmo fluxo
+  - Fundo com manchas animadas (também na Home)
 
-1) Instalação
+## Variáveis de Ambiente (backend)
 
-```powershell
-cd frontend
-npm install
-```
+- Banco: `DB_CONNECTION`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
+- Mailer: `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME`
 
-2) Desenvolvimento
+## Convenções de Código
 
-```powershell
-npm run dev
-# Aplicação: http://localhost:5173/
-```
+- PHP: Controllers com docblocks nos endpoints
+- React: componentes funcionais, estado local e chamadas à API via `api.ts`
+- Comentários explicativos foram adicionados em arquivos chave:
+  - `backend/app/Http/Controllers/AuthController.php`
+  - `backend/routes/api.php`
+  - `frontend/src/App.jsx`
+  - `frontend/src/components/Sidebar/index.tsx`
 
-- O frontend usa `baseURL` em `frontend/src/api.js` apontando para `http://127.0.0.1:8000/api`.
+## Notas de Segurança
 
-3) Lint e build
+- Nunca commitar segredos no repositório
+- Tokens são guardados em `localStorage` apenas para sessão dev; para produção, considerar `http‑only cookies`
 
-```powershell
-npm run lint
-npm run build
-npm run preview
-```
+## Próximos Passos
 
-## Login e Perfis
+- Configurar mailer real para produção (SendGrid/SES)
+- Adicionar testes automatizados de API e UI
+- Refinar autorização por papéis (admin/colaborador/cliente)
 
-- Admin padrão (semente):
-  - Usuário/E-mail: `adm`
-  - Senha: `adm`
-- Fluxo de login no frontend salva `token` e `user` no `localStorage` (inclui `tipo`).
-- `tipo` controla as permissões na UI; `cliente` vê tudo em cinza/desabilitado e não consegue abrir seletores.
-
-## API (resumo)
-
-- Autenticação
-  - `POST /login` — retorna `token` e `user` (inclui `tipo`).
-  - `GET /me` — dados do usuário logado.
-  - `POST /logout` — invalidar sessão.
-- Tickets
-  - `GET /tickets` — lista.
-  - `POST /tickets` — cria (bloqueado para `cliente`).
-  - `PUT /tickets/{id}` — atualiza (bloqueado para `cliente`).
-- Comentários (atualizações)
-  - `GET /tickets/{id}/updates` — lista.
-  - `POST /tickets/{id}/updates` — cria (bloqueado para `cliente`).
-  - `PUT /tickets/{id}/updates/{update}` — edita (restrições de autoria e bloqueio para `cliente`).
-  - `DELETE /tickets/{id}/updates/{update}` — remove (restrições de autoria e bloqueio para `cliente`).
-- Usuários (admin)
-  - `GET /users`, `POST /users`, `PUT /users/{id}`, `DELETE /users/{id}` — requer `can:manage-users` (is_admin).
-  - `GET /user-list` — lista básica para seleção em tickets.
-
-- Base de conhecimento
-  - Categorias: `GET /kb/categories`, `POST /kb/categories` (admin), `PUT /kb/categories/{id}` (admin), `DELETE /kb/categories/{id}` (admin).
-  - Artigos: `GET /kb/articles`, `GET /kb/articles/{id}`, `POST /kb/articles` (admin), `PUT /kb/articles/{id}` (admin), `DELETE /kb/articles/{id}` (admin).
-  - Vínculo artigo-ticket: `POST /kb/articles/{article}/tickets/{ticket}`, `DELETE /kb/articles/{article}/tickets/{ticket}` (admin).
-
-- Tags
-  - `GET /tags`, `POST /tags`, `PUT /tags/{id}` (admin), `DELETE /tags/{id}` (admin).
-
-- Anexos de tickets
-  - `GET /tickets/{id}/attachments`, `POST /tickets/{id}/attachments`, `DELETE /tickets/{id}/attachments/{attachment}`.
-
-## Execução Rápida (Windows)
-
-- Inicie o backend em um terminal:
-
-```powershell
-cd backend
-php artisan serve
-```
-
-- Inicie o frontend em outro terminal:
-
-```powershell
-cd frontend
-npm run dev
-```
-
-- Acesse:
-  - Backend: `http://127.0.0.1:8000/`
-  - Frontend: `http://localhost:5173/`
-
-## Observações
-
-- Se usar Node < 20.19, o Vite pode exibir aviso; atualize o Node para evitar problemas.
-- Se preferir rodar tudo junto a partir do backend, há um script Composer que usa `npx concurrently`:
-
-```powershell
-cd backend
-composer run dev
-```
-
-> Dica: garanta que o Node/NPM estão instalados e acessíveis no PATH para o script acima funcionar.

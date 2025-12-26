@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
+    /**
+     * Autentica um usuário e retorna token e dados básicos.
+     * Rota: POST /api/login (pública, throttle 10/min)
+     * Body: { email, password }
+     * Resposta: { token, user }
+     */
     public function login(LoginRequest $request)
     {
         $credentials = $request->validated();
@@ -45,6 +51,10 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Retorna dados do usuário autenticado.
+     * Rota: GET /api/me (auth:sanctum)
+     */
     public function me(\Illuminate\Http\Request $request)
     {
         $user = $request->user();
@@ -60,6 +70,10 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Revoga tokens do usuário atual (logout).
+     * Rota: POST /api/logout (auth:sanctum)
+     */
     public function logout(\Illuminate\Http\Request $request)
     {
         /** @var \App\Models\User $user */
@@ -69,6 +83,12 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logout realizado com sucesso']);
     }
 
+    /**
+     * Registra novo usuário colaborador (não admin) e autentica.
+     * Rota: POST /api/register (pública, throttle 10/min)
+     * Body: { name, email, password }
+     * Resposta: { token, user }
+     */
     public function register(\Illuminate\Http\Request $request)
     {
         $data = $request->validate([
@@ -102,6 +122,13 @@ class AuthController extends Controller
         ], 201);
     }
 
+    /**
+     * Solicita código de recuperação de senha via e-mail.
+     * Rota: POST /api/forgot-password (pública, throttle 10/min)
+     * Body: { email }
+     * Resposta: { message }
+     * Observação: Em ambiente local, o conteúdo do e-mail é gravado em storage/logs/laravel.log.
+     */
     public function forgotPassword(\Illuminate\Http\Request $request)
     {
         $data = $request->validate([
@@ -135,6 +162,12 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Redefine a senha usando código enviado por e-mail.
+     * Rota: POST /api/reset-password (pública, throttle 10/min)
+     * Body: { email, code, password }
+     * Resposta: { message }
+     */
     public function resetPassword(\Illuminate\Http\Request $request)
     {
         $data = $request->validate([

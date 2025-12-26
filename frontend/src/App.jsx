@@ -10,6 +10,8 @@ import "./styles.css";
 import { api, setAuthToken } from "./api";
 
 export default function App() {
+  // Estado de autenticação carregado do localStorage.
+  // Se houver token e usuário, propaga token para API e a app já inicia autenticada.
   const [auth, setAuth] = useState(() => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
@@ -20,15 +22,20 @@ export default function App() {
     }
     return { token: null, user: null };
   });
+  // Navegação baseada em chave simples no estado
   const [page, setPage] = useState(null);
+  // Lista de projetos do usuário autenticado
   const [projects, setProjects] = useState([]);
+  // Lista básica de usuários (para vincular membros via painel do projeto)
   const [userList, setUserList] = useState([]);
 
+  // Callback de login bem-sucedido da tela de Login
   const handleLogin = ({ token, user }) => {
     setAuth({ token, user });
     setPage("overview");
   };
 
+  // Efetua logout e reseta estado de navegação
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -39,8 +46,10 @@ export default function App() {
 
   // Hooks must remain top-level; render decides based on auth
 
+  // Flag para renderizar itens de administração
   const isAdmin = auth.user?.is_admin;
 
+  // Carrega projetos e lista básica de usuários após autenticação
   useEffect(() => {
     if (!auth.token) return;
     api.get("/projects").then((res) => {
@@ -53,6 +62,7 @@ export default function App() {
     api.get("/user-list").then((res) => setUserList(res.data || []));
   }, [auth.token, page]);
 
+  // Interpreta a chave de navegação em { projectId, view }
   const parsePage = (p) => {
     if (!p) return { projectId: null, view: null };
     const m = String(p).match(/^project:(\d+):(tickets|dashboard|members)$/);
@@ -60,6 +70,7 @@ export default function App() {
     return { projectId: null, view: p };
   };
 
+  // Cria um novo projeto e navega para seus tickets
   const onCreateProject = async () => {
     const nome = window.prompt("Nome do projeto");
     if (!nome || !nome.trim()) return;
@@ -71,6 +82,7 @@ export default function App() {
     setPage(`project:${proj.id}:tickets`);
   };
 
+  // Extrai o id do projeto a partir de chaves "project:<id>[:view]"
   const getProjectIdFromKey = (key) => {
     const m = String(key).match(/^project:(\d+)$/);
     if (m) return Number(m[1]);
@@ -79,6 +91,7 @@ export default function App() {
     return null;
   };
 
+  // Renomeia um projeto via prompt simples
   const onRenameProject = async (projectKey) => {
     const id = getProjectIdFromKey(projectKey);
     if (!id) return;
@@ -90,6 +103,7 @@ export default function App() {
     setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)));
   };
 
+  // Exclui um projeto e ajusta navegação se necessário
   const onDeleteProject = async (projectKey) => {
     const id = getProjectIdFromKey(projectKey);
     if (!id) return;
@@ -107,6 +121,7 @@ export default function App() {
     });
   };
 
+  // Vincula colaborador ao projeto por id ou e-mail
   const onLinkMember = async (projectKey, payload) => {
     const id = getProjectIdFromKey(projectKey);
     if (!id) return;
@@ -117,6 +132,7 @@ export default function App() {
     }
   };
 
+  // Desvincula colaborador; se o usuário atual sair, remove o projeto da navegação
   const onUnlinkMember = async (projectId, userId) => {
     await api.delete(`/projects/${projectId}/members/${userId}`);
     if (auth.user?.id === userId) {

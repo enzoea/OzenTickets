@@ -1,4 +1,8 @@
 <?php
+// Rotas da API do Painel de Demandas
+// Organização:
+// - Públicas: login, register, recuperação e redefinição de senha
+// - Protegidas (auth:sanctum): recursos de tickets, métricas, anexos, projetos e KB
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
@@ -12,6 +16,7 @@ use App\Http\Controllers\KbCategoryController;
 use App\Http\Controllers\KbArticleController;
 use Illuminate\Support\Facades\Route;
 
+// Autenticação (públicas)
 Route::post('/login', [AuthController::class, 'login'])
     ->middleware('throttle:10,1');
 Route::post('/register', [AuthController::class, 'register'])
@@ -21,6 +26,7 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])
     ->middleware('throttle:10,1');
 
+// Recursos protegidos por token
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -41,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store'])->middleware('throttle:30,1');
     Route::delete('/tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'destroy']);
 
+    // Administração de usuários e tags (apenas admin)
     Route::middleware('can:manage-users')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::post('/users', [UserController::class, 'store']);
@@ -66,6 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/kb/articles', [KbArticleController::class, 'index']);
     Route::get('/kb/articles/{article}', [KbArticleController::class, 'show']);
 
+    // Administração de KB (apenas admin)
     Route::middleware('can:manage-users')->group(function () {
         Route::put('/kb/categories/{category}', [KbCategoryController::class, 'update']);
         Route::delete('/kb/categories/{category}', [KbCategoryController::class, 'destroy']);
@@ -75,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/kb/articles/{article}', [KbArticleController::class, 'destroy']);
     });
 
+    // Criar categorias KB (colaboradores e admin)
     Route::post('/kb/categories', [KbCategoryController::class, 'store'])->middleware('throttle:30,1');
 
     Route::post('/kb/articles/{article}/tickets/{ticket}', [KbArticleController::class, 'attachTicket'])

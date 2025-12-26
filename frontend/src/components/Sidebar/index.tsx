@@ -3,11 +3,13 @@ import type { SidebarProps, SidebarItem } from "./interface";
 import { useEffect, useRef, useState } from "react";
 
 export default function Sidebar({ items, activeKey, onSelect, user, onLogout, onCreateProject, canCreateProject = true, onRenameProject, onDeleteProject }: SidebarProps) {
+  // Controle de grupos abertos/fechados por chave
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const toggle = (key: string) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   const [ctxKey, setCtxKey] = useState<string | null>(null);
   const asideRef = useRef<HTMLElement | null>(null);
 
+  // Fecha menu de contexto ao clicar fora
   useEffect(() => {
     if (!ctxKey) return;
     const handler = (e: MouseEvent) => {
@@ -22,6 +24,7 @@ export default function Sidebar({ items, activeKey, onSelect, user, onLogout, on
     return () => document.removeEventListener('mousedown', handler);
   }, [ctxKey]);
 
+  // Abre automaticamente grupo "Projetos" quando ainda não há projetos
   useEffect(() => {
     const proj = items.find((it) => it.key === 'projects');
     if (proj && (!proj.children || proj.children.length === 0)) {
@@ -29,6 +32,7 @@ export default function Sidebar({ items, activeKey, onSelect, user, onLogout, on
     }
   }, [items]);
 
+  // Renderiza item de menu (grupo ou item simples)
   const renderItem = (it: SidebarItem) => {
     const isProjectsGroup = it.key === 'projects';
     const hasChildren = isProjectsGroup || !!(it.children && it.children.length > 0);
