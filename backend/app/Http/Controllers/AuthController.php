@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Jobs\SendPasswordResetMail;
 
 class AuthController extends Controller
 {
@@ -143,16 +144,7 @@ class AuthController extends Controller
                 'hash' => hash('sha256', $code),
                 'ts' => time(),
             ], now()->addMinutes(15));
-            try {
-                Mail::raw('Seu código de recuperação: ' . $code, function ($m) use ($email) {
-                    $m->to($email)->subject('Recuperação de senha');
-                });
-            } catch (\Throwable $e) {
-                \Log::error('Falha ao enviar e-mail de recuperação', [
-                    'email' => $email,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            SendPasswordResetMail::dispatch($email, $code);
             if (app()->isLocal()) {
                 Log::info('Dev password reset code generated', ['email' => $email, 'code' => $code]);
             }

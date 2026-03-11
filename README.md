@@ -8,17 +8,77 @@ Aplicação full‑stack para gestão de projetos e tickets com autenticação, 
 - Frontend: React + Vite
 - Banco: SQLite (padrão) ou outro via `.env`
 
-## Executar localmente
+## Requisitos
 
-1. Backend
-   - Copie `.env.example` para `.env` e ajuste banco e mailer
-   - Instale dependências: `composer install`
-   - Rode migrations: `php artisan migrate`
-   - Inicie servidor: `php artisan serve` (http://127.0.0.1:8000)
+- PHP 8.2+ com extensões comuns (pdo_sqlite, mbstring, openssl)
+- Composer 2.x
+- Node.js 20+ e npm (para o frontend React/Vite)
+- Git (opcional)
+- Windows PowerShell (comandos abaixo) ou terminal equivalente
 
-2. Frontend
-   - Instale dependências: `npm install` (na pasta `frontend`)
-   - Inicie dev server: `npm run dev` (http://localhost:5173)
+## Variáveis de Ambiente
+
+- Backend (.env)
+  - Banco: `DB_CONNECTION=sqlite`, `DB_DATABASE=database/database.sqlite`
+  - Mailer (dev): `MAIL_MAILER=log`
+  - Webhooks MS (PHP interno):  
+    `EVENT_WEBHOOK_URLS=http://127.0.0.1:9000/api/ms/events/notifications,http://127.0.0.1:9000/api/ms/events/analytics`
+- Frontend (.env)
+  - `VITE_API_BASE=http://127.0.0.1:9000/api`
+  - `VITE_ANALYTICS_BASE=http://127.0.0.1:9000/api/ms`
+
+## Executar localmente (Windows)
+
+1) Backend
+   - Copiar `.env.example` para `.env` e ajustar banco/mailer
+   - Instalar dependências:
+
+     ```
+     cd backend
+     composer install
+     ```
+
+   - Rodar banco com seed (cria usuário admin `adm/adm`):
+
+     ```
+     php artisan migrate:fresh --seed --ansi
+     ```
+
+   - Subir servidor na porta 9000:
+
+     ```
+     php artisan serve --host 127.0.0.1 --port 9000
+     ```
+
+   - Subir o worker da fila (outra janela):
+
+     ```
+     cd backend
+     php artisan queue:work --tries=1
+     ```
+
+2) Frontend (Vite)
+   - Instalar dependências:
+
+     ```
+     cd frontend
+     npm install
+     ```
+
+   - Iniciar dev server (evitando módulo nativo do Rollup no Windows):
+
+     ```
+     $env:ROLLUP_SKIP_NATIVE="1"; npm run dev -- --host 127.0.0.1 --port 5174
+     ```
+
+   - Acessar: `http://127.0.0.1:5174/`
+
+   - Alternativa (build + preview):
+
+     ```
+     npm run build
+     npm run preview -- --host 127.0.0.1 --port 5174
+     ```
 
 ## Autenticação e Cadastro
 
@@ -61,6 +121,24 @@ Aplicação full‑stack para gestão de projetos e tickets com autenticação, 
   - Login, Cadastro e Recuperação de senha no mesmo fluxo
   - Fundo com manchas animadas (também na Home)
 
+## Microsserviços (PHP internos no backend)
+
+- Endpoints:
+  - Health: `GET /api/ms/health`
+  - Notifications:
+    - `POST /api/ms/events/notifications`
+    - `GET /api/ms/events/notifications`
+  - Analytics:
+    - `POST /api/ms/events/analytics`
+    - `GET /api/ms/metrics/by-status`
+- Publicação de eventos:
+  - O backend usa o padrão Outbox e publica para as URLs em `EVENT_WEBHOOK_URLS`
+  - A publicação ocorre via fila (`queue:work`), com multi-webhook e retry
+- Referências:
+  - Rotas: [`backend/routes/api.php`](backend/routes/api.php)
+  - Controller: [`backend/app/Http/Controllers/Ms/EventController.php`](backend/app/Http/Controllers/Ms/EventController.php)
+  - Outbox Job: [`backend/app/Jobs/PublishOutboxEvent.php`](backend/app/Jobs/PublishOutboxEvent.php)
+
 ## Variáveis de Ambiente (backend)
 
 - Banco: `DB_CONNECTION`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
@@ -86,4 +164,3 @@ Aplicação full‑stack para gestão de projetos e tickets com autenticação, 
 - Configurar mailer real para produção (SendGrid/SES)
 - Adicionar testes automatizados de API e UI
 - Refinar autorização por papéis (admin/colaborador/cliente)
-

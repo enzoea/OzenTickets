@@ -15,6 +15,7 @@ use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\KbCategoryController;
 use App\Http\Controllers\KbArticleController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Ms\EventController as MsEventController;
 
 // Autenticação (públicas)
 Route::post('/login', [AuthController::class, 'login'])
@@ -89,4 +90,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/kb/articles/{article}/tickets/{ticket}', [KbArticleController::class, 'attachTicket'])
         ->middleware('throttle:60,1');
     Route::delete('/kb/articles/{article}/tickets/{ticket}', [KbArticleController::class, 'detachTicket']);
+});
+
+Route::prefix('ms')->group(function () {
+    Route::get('/health', function () {
+        return response()->json(['ok' => true]);
+    });
+    Route::get('/events/notifications', [MsEventController::class, 'notificationsIndex']);
+    Route::post('/events/notifications', [MsEventController::class, 'notificationsStore'])->middleware('throttle:120,1');
+    Route::post('/events/analytics', [MsEventController::class, 'analyticsStore'])->middleware('throttle:240,1');
+    Route::get('/metrics/by-status', [MsEventController::class, 'analyticsByStatus']);
 });

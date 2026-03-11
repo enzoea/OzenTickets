@@ -33,6 +33,7 @@ export default function Dashboard({ projectId }) {
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [externalByStatus, setExternalByStatus] = useState([]);
   const [ticketOrder, setTicketOrder] = useState("newest");
   const [currentUserId, setCurrentUserId] = useState(null);
   const [detailTicket, setDetailTicket] = useState(null);
@@ -76,6 +77,19 @@ export default function Dashboard({ projectId }) {
         setUsers(uRes.data);
         const pRes = await api.get("/projects");
         setProjects(pRes.data || []);
+        try {
+          const base = import.meta.env?.VITE_ANALYTICS_BASE || "";
+          if (base) {
+            const res = await fetch(String(base).replace(/\/+$/,'') + "/metrics/by-status");
+            const json = await res.json();
+            const arr = Array.isArray(json) ? json : [];
+            setExternalByStatus(arr.map((x) => ({ status: String(x.status || ""), total: Number(x.total || 0) })));
+          } else {
+            setExternalByStatus([]);
+          }
+        } catch {
+          setExternalByStatus([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -263,6 +277,17 @@ export default function Dashboard({ projectId }) {
         label: "Tickets",
         data: byStatus.map((s) => s.total),
         backgroundColor: byStatus.map((s) => colorForStatus(s.status, "bar", theme)),
+      },
+    ],
+  };
+
+  const barDataExternal = {
+    labels: externalByStatus.map((s) => s.status),
+    datasets: [
+      {
+        label: "Tickets (analytics)",
+        data: externalByStatus.map((s) => s.total),
+        backgroundColor: externalByStatus.map((s) => colorForStatus(s.status, "bar", theme)),
       },
     ],
   };
@@ -509,6 +534,12 @@ export default function Dashboard({ projectId }) {
           <h3>Tickets por status</h3>
           <Bar data={barData} options={chartOptions} />
         </div>
+        {externalByStatus.length > 0 ? (
+          <div style={{ width: "100%", height: 320 }}>
+            <h3>Tickets por status (analytics)</h3>
+            <Bar data={barDataExternal} options={chartOptions} />
+          </div>
+        ) : null}
 
         <div style={{ width: "100%", height: 300 }}>
           <h3>Tickets por projeto</h3>

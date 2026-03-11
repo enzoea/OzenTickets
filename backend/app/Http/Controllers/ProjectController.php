@@ -77,6 +77,16 @@ class ProjectController extends Controller
             return response()->json(['message' => 'Usuário não encontrado'], 404);
         }
         $project->users()->syncWithoutDetaching([$userId]);
+        $evt = \App\Models\OutboxEvent::create([
+            'type' => 'project.member_added',
+            'payload' => [
+                'project_id' => $project->id,
+                'user_id' => $userId,
+                'by_user_id' => $current?->id,
+            ],
+            'occurred_at' => now(),
+        ]);
+        \App\Jobs\PublishOutboxEvent::dispatch($evt->id);
         return response()->json(['linked' => true]);
     }
 
@@ -93,6 +103,16 @@ class ProjectController extends Controller
             }
         }
         $project->users()->detach($user->id);
+        $evt = \App\Models\OutboxEvent::create([
+            'type' => 'project.member_removed',
+            'payload' => [
+                'project_id' => $project->id,
+                'user_id' => $user->id,
+                'by_user_id' => $current?->id,
+            ],
+            'occurred_at' => now(),
+        ]);
+        \App\Jobs\PublishOutboxEvent::dispatch($evt->id);
         return response()->json(['unlinked' => true]);
     }
 }

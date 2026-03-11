@@ -147,6 +147,16 @@ class KbArticleController extends Controller
         }
         $tipo = $request->input('tipo_relacao');
         $article->tickets()->syncWithoutDetaching([$ticket->id => ['tipo_relacao' => $tipo]]);
+        $evt = \App\Models\OutboxEvent::create([
+            'type' => 'kb.article_ticket_attached',
+            'payload' => [
+                'article_id' => $article->id,
+                'ticket_id' => $ticket->id,
+                'tipo_relacao' => $tipo,
+            ],
+            'occurred_at' => now(),
+        ]);
+        \App\Jobs\PublishOutboxEvent::dispatch($evt->id);
         return response()->noContent();
     }
 
@@ -161,6 +171,15 @@ class KbArticleController extends Controller
             return response()->json(['message' => 'Sem acesso ao projeto'], 403);
         }
         $article->tickets()->detach($ticket->id);
+        $evt = \App\Models\OutboxEvent::create([
+            'type' => 'kb.article_ticket_detached',
+            'payload' => [
+                'article_id' => $article->id,
+                'ticket_id' => $ticket->id,
+            ],
+            'occurred_at' => now(),
+        ]);
+        \App\Jobs\PublishOutboxEvent::dispatch($evt->id);
         return response()->noContent();
     }
 }

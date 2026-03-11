@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\Ticket;
+use App\Jobs\TicketStatusChangedNotify;
+use App\Models\OutboxEvent;
+use App\Jobs\PublishOutboxEvent;
 
 class TicketService
 {
@@ -28,6 +31,17 @@ class TicketService
             'conteudo' => 'Ticket criado',
             'type' => 'system',
         ]);
+        $outbox = \App\Models\OutboxEvent::create([
+            'type' => 'ticket.created',
+            'payload' => [
+                'ticket_id' => $ticket->id,
+                'project_id' => $ticket->project_id,
+                'status' => is_string($ticket->status) ? $ticket->status : ($ticket->status?->value),
+                'titulo' => $ticket->titulo,
+            ],
+            'occurred_at' => now(),
+        ]);
+        \App\Jobs\PublishOutboxEvent::dispatch($outbox->id);
         return $ticket;
     }
 
@@ -58,6 +72,17 @@ class TicketService
                 $ticket->resolved_at = now();
                 $ticket->save();
             }
+            TicketStatusChangedNotify::dispatch($ticket->id, is_string($originalStatus) ? $originalStatus : ($originalStatus?->value), $cur);
+            $outbox = OutboxEvent::create([
+                'type' => 'ticket.status_changed',
+                'payload' => [
+                    'ticket_id' => $ticket->id,
+                    'from' => is_string($originalStatus) ? $originalStatus : ($originalStatus?->value),
+                    'to' => $cur,
+                ],
+                'occurred_at' => now(),
+            ]);
+            PublishOutboxEvent::dispatch($outbox->id);
         }
         return $ticket;
     }

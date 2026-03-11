@@ -128,7 +128,7 @@ function App({ projectId }) {
       }
       if (u?.id) {
         const sid = [String(u.id)];
-        setSelectedUserIds(sid);
+        setSelectedUserIds([]);
         setDraftSelectedUserIds(sid);
         setSolicitanteId(String(u.id));
         setCurrentUserId(String(u.id));

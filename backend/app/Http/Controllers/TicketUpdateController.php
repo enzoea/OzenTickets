@@ -39,6 +39,16 @@ class TicketUpdateController extends Controller
             'conteudo' => 'Novo comentário',
             'type' => 'system',
         ]);
+        $evt = \App\Models\OutboxEvent::create([
+            'type' => 'ticket.comment_added',
+            'payload' => [
+                'ticket_id' => $ticket->id,
+                'update_id' => $update->id,
+                'user_id' => $update->user_id,
+            ],
+            'occurred_at' => now(),
+        ]);
+        \App\Jobs\PublishOutboxEvent::dispatch($evt->id);
         return (new TicketUpdateResource($update->load('user')))
             ->response()
             ->setStatusCode(201);
